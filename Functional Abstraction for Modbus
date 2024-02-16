@@ -1,0 +1,97 @@
+# %%
+"""Notes:
+
+This file contains all functions required to operate the 8 channel waveshare module to fit the design requirements.
+
+Device Purpose: The device is being used as an INPUT ONLY device, to receive signals from limit switches. User should be able to read from all channels.
+
+Tool functions:
+1. crc_calculator
+2. add_crc16
+
+
+Primary Functions Overview:
+1. read_device_address
+2. set_device_address
+3. read_input_status_8ch
+
+"""
+
+#As per current set up, the slave device address is 0x01
+
+
+# %%
+#imports
+from time import sleep
+import serial
+
+
+# %%
+def crc_calculator(msg:str) -> int: #https://stackoverflow.com/questions/69369408/calculating-crc16-in-python-for-modbus
+    crc = 0xFFFF
+    for n in range(len(msg)):
+        crc ^= msg[n]
+        for i in range(8):
+            if crc & 1:
+                crc >>= 1
+                crc ^= 0xA001
+            else:
+                crc >>= 1
+    return crc
+
+
+
+def add_crc16(cmd_without_crc16):
+    full_hex_str = ''
+    list = cmd_without_crc16
+    for i in range(6):
+        str_of_hex =(hex(list[i]).split('x')[1])
+        if len(str_of_hex) == 1:
+            str_of_hex = '0'+str_of_hex
+        full_hex_str = full_hex_str + str_of_hex
+    msg = bytes.fromhex(full_hex_str)
+    crc = crc_calculator(msg)
+    list[6] = int(hex(crc)[4:], 16)
+    list[7] = int(hex(crc)[2:4], 16)
+    return list
+
+# %%
+def read_device_address(serial_object): 
+    cmd_to_send = [0x00,0x03,0x40,0x00,0x00,0x01,0x90,0x1B] #refer to wiki for how the numbers are derived
+    serial_object.write(cmd_to_send)
+    reply = list(serial_object.read_all())
+    print(cmd_to_send)
+    print(reply)
+    device_address = reply[4]
+    return device_address
+
+# %%
+def set_device_address(serial_object, address):
+    if address%1 == False: #if address is not an integer
+        print("You did not enter an integer")
+        return
+    cmd_without_crc16 = [0x00,0x06,0x40,0x00,0x00,address,0x00,0x00]
+    cmd_to_send = add_crc16(cmd_without_crc16)
+    serial_object.write(cmd_to_send)
+    reply = list(serial_object.read_all())
+    print(cmd_to_send)
+    print(reply)
+    return
+
+# %%
+def read_input_status(serial_object, channel_number):
+    cmd_to_send = [0x01,0x02,0x00,0x00,0x00,0x08,0x79,0xCC] #0x01 is address of first 8ch device
+    serial_object.write(cmd_to_send)
+    print(cmd_to_send)
+    reply = list(serial_object.read_all())
+    print(cmd_to_send)
+    print(reply)
+    input_status = reply[3]
+    channel_status = input_status & (1 << (channel_number-1)) 
+    ##pressed is 0, not pressed is 1 for limit switch
+    if channel_status:
+        return "not pressed"
+    else:
+        return "pressed"
+
+
