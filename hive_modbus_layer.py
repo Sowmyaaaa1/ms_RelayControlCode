@@ -70,21 +70,15 @@ def read_input_status(serial_object,device_address, channel_number):
         return "pressed"
     
 
-def turn_on_relay(serial_object, device_address, channel_number):
-    cmd_without_crc16 = [device_address,0x05,0x00,channel_number-1,0xFF,0x00,0x00,0x00]
+def write_relay(serial_object, device_address, channel_number, relay_status):
+    if relay_status == 1: #1 is to switch on relay
+        cmd_without_crc16 = [device_address,0x05,0x00,channel_number-1,0xFF,0x00,0x00,0x00]
+    else:
+        cmd_without_crc16 = [device_address,0x05,0x00,channel_number-1,0x00,0x00,0x00,0x00]
     cmd_to_send = add_crc16(cmd_without_crc16)
     serial_object.write(cmd_to_send)
     reply = list(serial_object.read_all())
     print(cmd_to_send)
     print(reply)
     return   
-  
 
-def turn_off_relay(serial_object, device_address, channel_number):
-    cmd_without_crc16 = [device_address,0x05,0x00,channel_number-1,0x00,0x00,0x00,0x00]
-    cmd_to_send = add_crc16(cmd_without_crc16)
-    serial_object.write(cmd_to_send)
-    reply = list(serial_object.read_all())
-    print(cmd_to_send)
-    print(reply)
-    return   
