@@ -28,7 +28,7 @@ sensor_name options are as follows (convention is component_direction_sensor) an
 
 import serial
 import hive_modbus_layer as modbus
-
+import hive_waveshare_constants as constants
 
 PLATFORM_UP = 1
 PLATFORM_DOWN = -1
@@ -57,9 +57,9 @@ def open_serial_port(serial_port):
 
 def turn_aligner_motor(modbus_port, side, direction):
     if side == 'left':
-        motor_relays = [1,2]
+        motor_relays = [constants.LEFT_ALIGNER_MOTOR_A, constants.LEFT_ALIGNER_MOTOR_B]
     if side == 'right':
-        motor_relays = [3,4]
+        motor_relays = [constants.RIGHT_ALIGNER_MOTOR_A, constants.RIGHT_ALIGNER_MOTOR_B]
 
     rotation_dict = {ALIGNERS_OPEN: clockwise_rotation, ALIGNERS_CLOSE: anticlockwise_rotation, STOP: stop_rotation}
     for i in range(2):
@@ -67,9 +67,9 @@ def turn_aligner_motor(modbus_port, side, direction):
 
 def turn_platform_motor(modbus_port, side, direction):
     if side == 'left':
-        motor_relays = [5,6]
+        motor_relays = [constants.LEFT_PLATFORM_MOTOR_A, constants.LEFT_PLATFORM_MOTOR_B]
     if side == 'right':
-        motor_relays = [7,8]
+        motor_relays = [constants.RIGHT_PLATFORM_MOTOR_A, constants.RIGHT_PLATFORM_MOTOR_B]
 
     rotation_dict = {PLATFORM_UP: clockwise_rotation, PLATFORM_DOWN: anticlockwise_rotation, STOP: stop_rotation}
     for i in range(2):
@@ -78,9 +78,11 @@ def turn_platform_motor(modbus_port, side, direction):
 
 def check_limit_sensor(modbus_port, side, sensor_name):
     if side == 'left':
-        sensor_channel_dict = {'platform_down_sensor': 1, 'platform_up_sensor':2, 'aligner_close_sensor':3, 'aligner_open_sensor':4}
+        sensor_channel_dict = {'platform_down_sensor': constants.LEFT_PLATFORM_DOWN_SENSOR, 'platform_up_sensor': constants.LEFT_PLATFORM_UP_SENSOR,
+                                'aligner_close_sensor':constants.LEFT_ALIGNER_CLOSE_SENSOR, 'aligner_open_sensor':constants.LEFT_ALIGNER_OPEN_SENSOR}
     if side == 'right':
-        sensor_channel_dict = {'platform_down_sensor': 5, 'platform_up_sensor':6, 'aligner_close_sensor':7, 'aligner_open_sensor':8} 
+        sensor_channel_dict = {'platform_down_sensor': constants.RIGHT_PLATFORM_DOWN_SENSOR, 'platform_up_sensor':constants.RIGHT_PLATFORM_UP_SENSOR,
+                                'aligner_close_sensor':constants.RIGHT_ALIGNER_CLOSE_SENSOR, 'aligner_open_sensor':constants.RIGHT_ALIGNER_OPEN_SENSOR} 
 
     return modbus.read_input_status(modbus_port,modbus.WAVESHARE_8CH, sensor_channel_dict[sensor_name]-1)
      
