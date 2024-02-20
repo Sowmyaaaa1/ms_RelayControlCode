@@ -4,8 +4,12 @@ This file is the implementation layer, and is the middle layer between command l
 This file contains code to initialize the serial port required to communicate with modbus devices,
 and it also calls the corresponding modbus functions depending on the command action.
 
+
 Function for Serial port
 1. open_serial_port(port)
+which also requires helper functions for the purpose of automating and creating a plug and play method
+1.a. allow_usb_access(password) 
+1.b. find_usb_port(vendor_id, product_id)
 
 Functions to turn the (4) motors
 2. turn_aligner_motor(modbus_port, side, direction)
@@ -24,11 +28,12 @@ sensor_name options are as follows (convention is component_direction_sensor) an
 
 
 """
-
-
 import serial
+import pyudev
 import hive_modbus_layer as modbus
 import hive_waveshare_constants as constants
+
+sudo_password = 'Jaima11!'
 
 PLATFORM_UP = 1
 PLATFORM_DOWN = -1
@@ -45,12 +50,44 @@ clockwise_rotation = [modbus.RELAY_ON, modbus.RELAY_OFF]
 anticlockwise_rotation = [modbus.RELAY_OFF, modbus.RELAY_ON]
 stop_rotation = [modbus.RELAY_OFF, modbus.RELAY_OFF]
 
+def allow_usb_access():
+    import subprocess
+    command = f"echo {sudo_password}| sudo -S chmod a+rw /dev/ttyUSB*"
+
+    try:
+        subprocess.run(command, shell=True, check=True)
+    except:
+        return None
+
+
+def find_usb_port(vendor_id, product_id):
+    context = pyudev.Context()
+    for device in context.list_devices(subsystem='tty', ID_VENDOR_ID=vendor_id, ID_MODEL_ID=product_id):
+        try:
+            # Get the device node path
+            device_node = device.device_node
+
+            # Check if the device node path starts with /dev/ttyUSB
+            if device_node.startswith('/dev/ttyUSB'):
+                return device_node
+        except Exception as e:
+            print(f"Error: {e}")
+    return 'Device not plugged in'
+
 
 def open_serial_port(serial_port):
     if (serial_port != 0) and serial_port.is_open:
         pass
     else:
-        serial_port = serial.Serial('dev/ttyUSB0', 9600) #to be automated
+        # details of our usb to rs485 chip: ID 0403:6001 Future Technology Devices International, Ltd FT232 Serial (UART) IC
+        allow_usb_access() #whatever the sudo password is
+        vendor_id = "0403"
+        product_id = "6001"
+
+        usb_port = find_usb_port(vendor_id, product_id)
+        
+        if usb_port != 'Device not plugged in':    
+            serial_port = serial.Serial(usb_port, 9600)
 
     return serial_port
 
