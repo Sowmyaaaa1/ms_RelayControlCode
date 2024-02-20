@@ -33,7 +33,7 @@ import pyudev
 import hive_modbus_layer as modbus
 import hive_waveshare_constants as constants
 
-sudo_password = 'Jaima11!'
+sudo_password = 'password' #enter your password
 
 PLATFORM_UP = 1
 PLATFORM_DOWN = -1
