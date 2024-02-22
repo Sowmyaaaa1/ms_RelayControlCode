@@ -33,7 +33,7 @@ import hive_modbus_layer as modbus
 import hive_waveshare_constants as constants
 from time import sleep
 
-sudo_password = 'Jaima11!' #enter system's sudo password
+sudo_password = '' #enter system's sudo password
 
 #directions - input to functions from cmd layer
 PLATFORM_UP = 1
