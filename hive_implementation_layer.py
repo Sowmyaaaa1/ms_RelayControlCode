@@ -29,27 +29,34 @@ sensor_name options are as follows (convention is component_direction_sensor) an
 
 """
 import serial
-import pyudev
 import hive_modbus_layer as modbus
 import hive_waveshare_constants as constants
+from time import sleep
 
-sudo_password = 'password' #enter your password
+sudo_password = 'Jaima11!' #enter system's sudo password
 
+#directions - input to functions from cmd layer
 PLATFORM_UP = 1
 PLATFORM_DOWN = -1
 
-ALIGNERS_OPEN = 1
-ALIGNERS_CLOSE = -1
+ALIGNER_OPEN = 1
+ALIGNER_CLOSE = -1
 
 STOP = 0
 
 SWITCH_PRESSED = modbus.SWITCH_PRESSED
 SWITCH_NOT_PRESSED = modbus.SWITCH_NOT_PRESSED
 
-clockwise_rotation = [modbus.RELAY_ON, modbus.RELAY_OFF]
-anticlockwise_rotation = [modbus.RELAY_OFF, modbus.RELAY_ON]
+# if gnd/ch1 is on and live/ch2 is off, anti clockwise
+#if gnd/ch1 is off and gnd/ch2 is on, clockwise
+#both high, both low = stop
+
+clockwise_rotation = [modbus.RELAY_OFF, modbus.RELAY_ON]
+anticlockwise_rotation = [modbus.RELAY_ON, modbus.RELAY_OFF]
 stop_rotation = [modbus.RELAY_OFF, modbus.RELAY_OFF]
 
+
+#tested, all clear
 def allow_usb_access():
     import subprocess
     command = f"echo {sudo_password}| sudo -S chmod a+rw /dev/ttyUSB*"
@@ -60,7 +67,9 @@ def allow_usb_access():
         return None
 
 
+#tested, all clear
 def find_usb_port(vendor_id, product_id):
+    import pyudev
     context = pyudev.Context()
     for device in context.list_devices(subsystem='tty', ID_VENDOR_ID=vendor_id, ID_MODEL_ID=product_id):
         try:
@@ -75,6 +84,7 @@ def find_usb_port(vendor_id, product_id):
     return 'Device not plugged in'
 
 
+#tested, all clear and  works with plug and play functionality.
 def open_serial_port(serial_port):
     if (serial_port != 0) and serial_port.is_open:
         pass
@@ -92,36 +102,52 @@ def open_serial_port(serial_port):
     return serial_port
 
 
+#tested, NEED TO REMAP ROTATION_DICT according to reality - rn it's dummy
+#otherwise clear, works for both side A and side B aligner motors
 def turn_aligner_motor(modbus_port, side, direction):
-    if side == 'left':
-        motor_relays = [constants.LEFT_ALIGNER_MOTOR_A, constants.LEFT_ALIGNER_MOTOR_B]
-    if side == 'right':
-        motor_relays = [constants.RIGHT_ALIGNER_MOTOR_A, constants.RIGHT_ALIGNER_MOTOR_B]
+    if side == 'A':
+        motor_relays = [constants.A_ALIGNER_MOTOR_GND, constants.A_ALIGNER_MOTOR_LIVE]
+    if side == 'B':
+        motor_relays = [constants.B_ALIGNER_MOTOR_GND, constants.B_ALIGNER_MOTOR_LIVE]
 
-    rotation_dict = {ALIGNERS_OPEN: clockwise_rotation, ALIGNERS_CLOSE: anticlockwise_rotation, STOP: stop_rotation}
-    for i in range(2):
-        modbus.write_relay(modbus_port,modbus.WAVESHARE_32CH,motor_relays[i],rotation_dict[direction][i])
+    rotation_dict = {ALIGNER_OPEN: clockwise_rotation, ALIGNER_CLOSE: anticlockwise_rotation, STOP: stop_rotation}
 
+    i = 0
+    modbus.write_relay(modbus_port,modbus.WAVESHARE_16CH,motor_relays[i],rotation_dict[direction][i])
+    sleep(0.03)
+    i = 1
+    modbus.write_relay(modbus_port,modbus.WAVESHARE_16CH,motor_relays[i],rotation_dict[direction][i])
+
+
+#tested, NEED TO REMAP ROTATION_DICT according to reality - rn it's dummy
+#otherwise clear, works for both side A and side B platform motors
 def turn_platform_motor(modbus_port, side, direction):
-    if side == 'left':
-        motor_relays = [constants.LEFT_PLATFORM_MOTOR_A, constants.LEFT_PLATFORM_MOTOR_B]
-    if side == 'right':
-        motor_relays = [constants.RIGHT_PLATFORM_MOTOR_A, constants.RIGHT_PLATFORM_MOTOR_B]
-
+    if side == 'A':
+        motor_relays = [constants.A_PLATFORM_MOTOR_GND, constants.A_PLATFORM_MOTOR_LIVE]
+    if side == 'B':
+        motor_relays = [constants.B_PLATFORM_MOTOR_GND, constants.B_PLATFORM_MOTOR_LIVE]
+    
     rotation_dict = {PLATFORM_UP: clockwise_rotation, PLATFORM_DOWN: anticlockwise_rotation, STOP: stop_rotation}
-    for i in range(2):
-        modbus.write_relay(modbus_port,modbus.WAVESHARE_32CH,motor_relays[i],rotation_dict[direction][i])
+
+    i = 0
+    modbus.write_relay(modbus_port,modbus.WAVESHARE_16CH,motor_relays[i],rotation_dict[direction][i])
+    sleep(0.03)
+    i = 1
+    modbus.write_relay(modbus_port,modbus.WAVESHARE_16CH,motor_relays[i],rotation_dict[direction][i])
 
 
+#tested, bug from modbus_layer fixed here by making it sleep and calling read_input_status twice so that the second
+#time is the right output. Otherwise, all clear,all 8 sensors checked.
 def check_limit_sensor(modbus_port, side, sensor_name):
-    if side == 'left':
-        sensor_channel_dict = {'platform_down_sensor': constants.LEFT_PLATFORM_DOWN_SENSOR, 'platform_up_sensor': constants.LEFT_PLATFORM_UP_SENSOR,
-                                'aligner_close_sensor':constants.LEFT_ALIGNER_CLOSE_SENSOR, 'aligner_open_sensor':constants.LEFT_ALIGNER_OPEN_SENSOR}
-    if side == 'right':
-        sensor_channel_dict = {'platform_down_sensor': constants.RIGHT_PLATFORM_DOWN_SENSOR, 'platform_up_sensor':constants.RIGHT_PLATFORM_UP_SENSOR,
-                                'aligner_close_sensor':constants.RIGHT_ALIGNER_CLOSE_SENSOR, 'aligner_open_sensor':constants.RIGHT_ALIGNER_OPEN_SENSOR} 
+    if side == 'A':
+        sensor_channel_dict = {'platform_down_sensor': constants.A_PLATFORM_DOWN_SENSOR, 'platform_up_sensor': constants.A_PLATFORM_UP_SENSOR,
+                                'aligner_close_sensor':constants.A_ALIGNER_CLOSE_SENSOR, 'aligner_open_sensor':constants.A_ALIGNER_OPEN_SENSOR}
+    if side == 'B':
+        sensor_channel_dict = {'platform_down_sensor': constants.B_PLATFORM_DOWN_SENSOR, 'platform_up_sensor':constants.B_PLATFORM_UP_SENSOR,
+                                'aligner_close_sensor':constants.B_ALIGNER_CLOSE_SENSOR, 'aligner_open_sensor':constants.B_ALIGNER_OPEN_SENSOR} 
 
-    return modbus.read_input_status(modbus_port,modbus.WAVESHARE_8CH, sensor_channel_dict[sensor_name]-1)
-     
-     
+    input_status = modbus.read_input_status(modbus_port,modbus.WAVESHARE_8CH_1, sensor_channel_dict[sensor_name])
+    sleep(0.03)
+    input_status = modbus.read_input_status(modbus_port,modbus.WAVESHARE_8CH_1, sensor_channel_dict[sensor_name])
 
+    return input_status
